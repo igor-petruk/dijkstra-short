@@ -5,24 +5,28 @@ import annotation.tailrec
 case class Path(points:List[Int], length:Int)
 
 class Dijkstra(graphInput:List[(Int,Int,Int)]){
-  val graph = {
-    val withoutEmpty = graphInput.view
-      .map(x=>List(x,(x._2,x._1,x._3))).flatten
-      .groupBy(_._1)
-      .map(x=>(x._1,x._2.map(q=>(q._2,q._3)).toMap))
+  val graph:Map[Int,Map[Int,Int]] = {  // Converted adjacency triplets to Map of Maps
+    val withoutEmpty = graphInput.view   // Efficiency measure
+      .map(x=>List(x,(x._2,x._1,x._3))).flatten // Add reverse edge after each edge
+      .groupBy(_._1) // Groub by start node
+      .map(x=>(x._1,x._2.map(q=>(q._2,q._3)).toMap)) // Convert List to Map
+    // Adding defaults like 4=>Map() if no edges to 4 found
     val defaults = (0 to withoutEmpty.keys.max).map(x=>(x,Map[Int,Int]())).toMap
     defaults++withoutEmpty
   }
 
   def find(from:Int, to:Int):Option[Path]={
+    // Initial arrays
     val distance = (0 to graph.keys.max).map(x=>if (x==from) 0 else Int.MaxValue).toArray
     val pathArray = (0 to graph.keys.max).map(x=>if (x==from) from else -1).toArray
 
     @tailrec
     def iterate(visited:Set[Int]):Boolean={
       if (!graph.keys.forall(visited.contains(_))){
+        // find not visited with smallest index
         val smallest = distance.view.zipWithIndex.filter(item=> !visited.contains(item._2)).minBy(_._1)
 
+        // Cannot proceed
         if (smallest._1 == Int.MaxValue)
            return false
 
@@ -34,13 +38,14 @@ class Dijkstra(graphInput:List[(Int,Int,Int)]){
             pathArray(edge._1) = smallest._2
           }
         }
-        iterate(newVisited)
+        iterate(newVisited) // Tailrecur
       } else {
         true // visited all
       }
     }
-    if (iterate(Set.empty)){
+    if (iterate(Set.empty)){ // If found paths
       val path = {
+        // Building path via Stream navigation
         def pathStream(pt:Int):Stream[Int] = pt #:: pathStream(pathArray(pt))
         from :: pathStream(to).takeWhile(_!=from).toList.reverse
       }
